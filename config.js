@@ -3,7 +3,7 @@ export const CONFIG = {
     sessionCookie: process.env.SESSION_COOKIE,
     botToken: process.env.TELEGRAM_BOT_TOKEN,
 
-    pollInterval: 5000,
+    pollInterval: 1000,
     maxMessageAge: 290,
     fetchWindowMinutes: 5,
     clockSkewTolerance: 10,
