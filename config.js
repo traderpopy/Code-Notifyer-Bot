@@ -1,8 +1,7 @@
 export const CONFIG = {
-    apiUrl: 'http://185.2.83.39/ints/client/res/data_smscdr.php',
-    sessionCookie: process.env.SESSION_COOKIE || 'PHPSESSID=89mjqe96d845np2mtd1l1m0cb4',
-
-    botToken: process.env.TELEGRAM_BOT_TOKEN || '7374976678:AAFyP4wcYFOrG3fhbASGxA_5_dOMb46so9I',
+    apiUrl: process.env.API_URL || 'http://185.2.83.39/ints/client/res/data_smscdr.php',
+    sessionCookie: process.env.SESSION_COOKIE,
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
 
     pollInterval: 5000,
     maxMessageAge: 290,
@@ -19,7 +18,7 @@ export const CONFIG = {
 
     stateFile: './state.json',
 
-    logLevel: 'DEBUG',
+    logLevel: process.env.LOG_LEVEL || 'INFO',
     enableFileLogging: false,
     logDir: './logs'
 };
