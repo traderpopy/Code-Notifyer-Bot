@@ -21,6 +21,7 @@ async function processMessage(message) {
         otp,
         phone: phoneInfo.formatted,
         flag: phoneInfo.flag,
+        countryCode: phoneInfo.countryCode,
         timestamp: message.timestamp,
         rawMessage: message.message
     });

@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-
+Vertion Controll/
+*.Vertion Controll
 # State files
 state.json
 subscribers.json

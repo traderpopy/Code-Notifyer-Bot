@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { getSessionCookie, refreshSession, isSessionExpired } from './auth.js';
 
 function formatDateForApi(date, isStart = false) {
     const year = date.getFullYear();
@@ -105,15 +106,19 @@ function parseMessages(response) {
 }
 
 /**
- * Fetch messages from SMS API with retry logic
+ * Fetch messages from SMS API with session auto-renewal
  * @param {number} retryCount - Current retry attempt
+ * @param {boolean} isRetryAfterRefresh - Whether this is a retry after session refresh
  * @returns {Promise<Array>} Array of message objects
  */
-export async function fetchMessages(retryCount = 0) {
+export async function fetchMessages(retryCount = 0, isRetryAfterRefresh = false) {
     const now = new Date();
     const startDate = new Date(now.getTime() - CONFIG.fetchWindowMinutes * 60 * 1000);
 
     const url = buildApiUrl(startDate, now);
+
+    // Get current session cookie (from memory or env)
+    const sessionCookie = getSessionCookie();
 
     try {
         const response = await fetch(url, {
@@ -122,18 +127,55 @@ export async function fetchMessages(retryCount = 0) {
                 'Accept': 'application/json, text/javascript, */*; q=0.01',
                 'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
                 'Connection': 'keep-alive',
-                'Cookie': CONFIG.sessionCookie,
+                'Cookie': sessionCookie,
                 'Referer': 'http://185.2.83.39/ints/client/SMSCDRStats',
                 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Get response text to check for session expiry
+        const responseText = await response.text();
+
+        // Check if session expired
+        if (isSessionExpired(response, responseText)) {
+            console.warn('⚠️ [API] Session expired detected!');
+
+            // Only try to refresh once to avoid infinite loop
+            if (!isRetryAfterRefresh) {
+                const newCookie = await refreshSession();
+
+                if (newCookie) {
+                    console.log('🔄 [API] Retrying with new session...');
+                    return fetchMessages(0, true);
+                } else {
+                    console.error('❌ [API] Failed to refresh session');
+                    return [];
+                }
+            } else {
+                console.error('❌ [API] Session still expired after refresh');
+                return [];
+            }
         }
 
-        const data = await response.json();
+        // Parse JSON from response text
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('❌ [API] Failed to parse JSON response');
+
+            // This might be a session issue, try to refresh
+            if (!isRetryAfterRefresh) {
+                console.warn('⚠️ [API] Invalid JSON - might be session issue, refreshing...');
+                const newCookie = await refreshSession();
+
+                if (newCookie) {
+                    return fetchMessages(0, true);
+                }
+            }
+            return [];
+        }
 
         if (CONFIG.logLevel === 'DEBUG') {
             console.log('🔍 Raw API Response:', JSON.stringify(data, null, 2).substring(0, 500));
@@ -144,10 +186,22 @@ export async function fetchMessages(retryCount = 0) {
     } catch (error) {
         console.error(`❌ API fetch error (attempt ${retryCount + 1}):`, error.message);
 
+        // Check if it's a network error that might be session-related
+        if (error.message.includes('401') || error.message.includes('403')) {
+            if (!isRetryAfterRefresh) {
+                console.warn('⚠️ [API] Auth error detected, refreshing session...');
+                const newCookie = await refreshSession();
+
+                if (newCookie) {
+                    return fetchMessages(0, true);
+                }
+            }
+        }
+
         if (retryCount < CONFIG.maxRetries - 1) {
             console.log(`🔄 Retrying in ${CONFIG.retryDelay / 1000}s...`);
             await new Promise(resolve => setTimeout(resolve, CONFIG.retryDelay));
-            return fetchMessages(retryCount + 1);
+            return fetchMessages(retryCount + 1, isRetryAfterRefresh);
         }
 
         console.error('❌ Max retries reached, returning empty array');

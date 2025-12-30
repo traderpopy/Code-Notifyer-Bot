@@ -66,3 +66,29 @@ export function formatPhoneWithFlag(phoneNumber) {
         };
     }
 }
+
+/**
+ * Mask phone number for display (e.g., +2217XXXXX777)
+ * Shows first 4 digits, masks middle with X, shows last 3 digits
+ * @param {string} phone - Formatted phone number (with + prefix)
+ * @returns {string} Masked phone number
+ */
+export function maskPhoneNumber(phone) {
+    if (!phone) return '';
+
+    // Remove + for processing
+    const digits = phone.replace(/\D/g, '');
+
+    if (digits.length <= 8) {
+        // Short number - just return as is
+        return `+${digits}`;
+    }
+
+    // Show first 4 digits, mask middle, show last 3
+    const first = digits.slice(0, 4);
+    const last = digits.slice(-3);
+    const middleLength = digits.length - 7;
+    const masked = 'X'.repeat(Math.min(middleLength, 5));
+
+    return `+${first}${masked}${last}`;
+}

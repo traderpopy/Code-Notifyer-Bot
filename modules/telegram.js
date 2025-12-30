@@ -1,15 +1,22 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import { CONFIG } from '../config.js';
 import {
     loadSubscribers,
-    addUser,
     addGroup,
     removeGroup,
     getAllChatIds,
     getStats
 } from './subscribers.js';
+import { detectPlatform, getPlatformInfo, isKnownPlatform } from './platform.js';
+import { maskPhoneNumber } from './phone.js';
 
 let bot = null;
+
+// Quick action button URLs
+const BUTTON_LINKS = {
+    backup: 'https://t.me/tg_account_method',
+    number: 'https://t.me/number_panel_kst'
+};
 
 export function initTelegram() {
     if (!CONFIG.botToken || CONFIG.botToken === 'YOUR_BOT_TOKEN') {
@@ -21,29 +28,28 @@ export function initTelegram() {
 
     loadSubscribers();
 
+    // /subscribe command - GROUPS ONLY
     bot.command('subscribe', (ctx) => {
         const chat = ctx.chat;
 
         if (chat.type === 'private') {
-            const isNew = addUser(chat.id, ctx.from.username, ctx.from.first_name);
-            if (isNew) {
-                ctx.reply('✅ You are now subscribed to OTP notifications!\n\nYou will receive all new OTP codes automatically.');
-            } else {
-                ctx.reply('👋 You are already subscribed!\n\nYou will continue receiving OTP notifications.');
-            }
+            // Individual users not allowed
+            ctx.reply('⚠️ This bot only works in groups.\n\nPlease add me to a group and use /subscribe there.');
+            return;
+        }
+
+        // Groups and supergroups
+        const isNew = addGroup(chat.id, chat.title);
+        if (isNew) {
+            ctx.reply('✅ This group is now subscribed to OTP notifications!');
         } else {
-            const isNew = addGroup(chat.id, chat.title);
-            if (isNew) {
-                ctx.reply('✅ This group is now subscribed to OTP notifications!');
-            } else {
-                ctx.reply('👋 This group is already subscribed!');
-            }
+            ctx.reply('👋 This group is already subscribed!');
         }
     });
 
     bot.command('stats', (ctx) => {
         const stats = getStats();
-        ctx.reply(`📊 <b>Bot Statistics</b>\n\n👤 Users: ${stats.users}\n👥 Groups: ${stats.groups}\n📬 Total subscribers: ${stats.total}`, { parse_mode: 'HTML' });
+        ctx.reply(`📊 <b>Bot Statistics</b>\n\n👥 Groups: ${stats.groups}\n📬 Total subscribers: ${stats.total}`, { parse_mode: 'HTML' });
     });
 
     bot.on('my_chat_member', (ctx) => {
@@ -79,7 +85,7 @@ export function initTelegram() {
     process.once('SIGINT', () => bot.stop('SIGINT'));
     process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-    console.log('✅ Telegram bot initialized (Telegraf) - Listening for /subscribe');
+    console.log('✅ Telegram bot initialized (Telegraf) - Listening for /subscribe (groups only)');
     return true;
 }
 
@@ -91,15 +97,58 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;');
 }
 
-function formatNotification(data) {
-    return `✅  <b>Telegram OTP Received!</b>
+/**
+ * Format notification for KNOWN platforms (Telegram, Facebook, WhatsApp)
+ * Shows header with hashtags and copy button for OTP
+ */
+function formatKnownPlatformNotification(data) {
+    const { flag, countryCode, platformInfo, maskedPhone } = data;
+    const countryShort = countryCode || 'XX';
 
-<b>OTP Code:</b> <code>${data.otp}</code>
-<b>Number:</b> ${data.flag} <code>${data.phone}</code>
-<b>Time:</b> ${data.timestamp}
+    return `${flag} #${countryShort} #${platformInfo.short} ${maskedPhone}`;
+}
+
+/**
+ * Format notification for UNKNOWN platforms
+ * Shows full message content without copy button
+ */
+function formatUnknownPlatformNotification(data) {
+    const { flag, countryCode, maskedPhone, rawMessage } = data;
+    const countryShort = countryCode || 'XX';
+
+    return `${flag} #${countryShort} Unknown ${maskedPhone}
 
 <b>Message:</b>
-<pre>${escapeHtml(data.rawMessage)}</pre>`;
+<pre>${escapeHtml(rawMessage)}</pre>`;
+}
+
+/**
+ * Create inline keyboard for known platforms
+ * - CopyTextButton for OTP code (copies to clipboard)
+ * - Number and Backup links (swapped order)
+ */
+function createKnownPlatformKeyboard(otp) {
+    return Markup.inlineKeyboard([
+        // CopyTextButton - copies OTP to clipboard when clicked
+        [{ text: otp, copy_text: { text: otp } }],
+        [
+            Markup.button.url('♻️ Number', BUTTON_LINKS.number),
+            Markup.button.url('‼️ Backup', BUTTON_LINKS.backup)
+        ]
+    ]);
+}
+
+/**
+ * Create inline keyboard for unknown platforms
+ * - Only Number and Backup links (no copy button)
+ */
+function createUnknownPlatformKeyboard() {
+    return Markup.inlineKeyboard([
+        [
+            Markup.button.url('♻️ Number', BUTTON_LINKS.number),
+            Markup.button.url('‼️ Backup', BUTTON_LINKS.backup)
+        ]
+    ]);
 }
 
 export async function sendOtpNotification(data, retryCount = 0) {
@@ -108,11 +157,35 @@ export async function sendOtpNotification(data, retryCount = 0) {
         return false;
     }
 
-    const message = formatNotification(data);
+    // Detect platform from raw message
+    const platformKey = detectPlatform(data.rawMessage);
+    const platformInfo = getPlatformInfo(platformKey);
+    const isKnown = isKnownPlatform(platformKey);
+
+    // Mask the phone number
+    const maskedPhone = maskPhoneNumber(data.phone);
+
+    // Prepare notification data
+    const notificationData = {
+        ...data,
+        platformInfo,
+        maskedPhone
+    };
+
+    // Format message based on platform type
+    const message = isKnown
+        ? formatKnownPlatformNotification(notificationData)
+        : formatUnknownPlatformNotification(notificationData);
+
+    // Create appropriate keyboard
+    const keyboard = isKnown
+        ? createKnownPlatformKeyboard(data.otp)
+        : createUnknownPlatformKeyboard();
+
     const chatIds = getAllChatIds();
 
     if (chatIds.length === 0) {
-        console.warn('⚠️ No subscribers yet. Add users/groups with /start');
+        console.warn('⚠️ No subscribers yet. Add this bot to groups and use /subscribe');
         return false;
     }
 
@@ -123,7 +196,8 @@ export async function sendOtpNotification(data, retryCount = 0) {
         try {
             await bot.telegram.sendMessage(chatId, message, {
                 parse_mode: 'HTML',
-                disable_web_page_preview: true
+                disable_web_page_preview: true,
+                ...keyboard
             });
             successCount++;
         } catch (error) {
@@ -132,7 +206,7 @@ export async function sendOtpNotification(data, retryCount = 0) {
         }
     }
 
-    console.log(`📤 Sent OTP ${data.otp}: ${successCount} success, ${failCount} failed`);
+    console.log(`📤 Sent OTP ${data.otp} [${platformInfo.short}]: ${successCount} success, ${failCount} failed`);
     return successCount > 0;
 }
 
@@ -146,7 +220,7 @@ export async function sendStartupNotification(skippedCount) {
 📊 Existing messages skipped: ${skippedCount}
 🔄 Polling interval: ${CONFIG.pollInterval / 1000}s
 ⏳ Max OTP age: ${CONFIG.maxMessageAge}s
-👤 Users: ${stats.users} | 👥 Groups: ${stats.groups}
+👥 Groups: ${stats.groups}
 
 <i>Monitoring for new OTPs...</i>`;
 
