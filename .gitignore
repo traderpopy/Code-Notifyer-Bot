@@ -2,6 +2,7 @@
 node_modules/
 Vertion Controll/
 *.Vertion Controll
+
 # State files
 state.json
 subscribers.json
@@ -24,3 +25,11 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Test files
+test.js
+test*.js
+*.test.js
+
+# Backup
+backup/

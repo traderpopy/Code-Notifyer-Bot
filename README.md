@@ -1,61 +1,71 @@
 # 📱 Telegram OTP Monitor Bot
 
-Monitors an SMS API for OTP codes and broadcasts them to Telegram subscribers.
+Monitors an SMS API for OTP codes and broadcasts them to Telegram groups with platform detection and auto-session renewal.
 
 ## ✨ Features
 
-- ⚡ **Real-time** - Polls every 5 seconds
-- 🔄 **Smart tracking** - Only sends NEW OTPs (newer than bot start)
-- 👥 **Multi-subscriber** - Broadcasts to all /subscribe users + groups
-- 🌍 **Auto flags** - Detects country from phone number
-- 🚫 **No duplicates** - Timestamp-based tracking
+- ⚡ **Real-time polling** - Checks every 5 seconds
+- 🔐 **Auto session renewal** - Automatically re-logs when session expires
+- 🏷️ **Platform detection** - Identifies Telegram, Facebook, WhatsApp OTPs
+- 📋 **Copy button** - One-tap copy OTP code to clipboard
+- 🌍 **Auto country flags** - Detects country from phone number
+- 🔒 **Masked numbers** - Shows `+5939XXXXX539` format
+- 👥 **Groups only** - `/subscribe` works in groups only
 
 ## 🚀 Quick Start
 
 ### 1. Install
 
 ```bash
-npm install
+bun install
 ```
 
 ### 2. Configure
 
-Edit `config.js`:
+Create `.env` file:
 
-```javascript
-botToken: 'YOUR_BOT_TOKEN',  // From @BotFather
-sessionCookie: 'PHPSESSID=xxx',  // From browser
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token
+SESSION_COOKIE=PHPSESSID=your_session
 ```
+
+Or edit `config.js` directly.
 
 ### 3. Run
 
 ```bash
-npm start
+bun start
 ```
 
 ## 📲 Usage
 
 ### Subscribe
-- Users: Send `/subscribe` to the bot
-- Groups: Add bot to group, send `/subscribe`
+- Add bot to a group and send `/subscribe`
+- Individual users are not supported
 
 ### Commands
 | Command | Description |
 |---------|-------------|
-| `/subscribe` | Subscribe to notifications |
+| `/subscribe` | Subscribe group to notifications |
 | `/stats` | View subscriber count |
 
 ## 📤 Message Format
 
+**Known Platform (Telegram/Facebook/WhatsApp):**
 ```
-✅  Telegram OTP Received!
+🇪🇨 #EC #TG +5939XXXXX539
 
-OTP Code: 744745
-Number: 🇪🇨 +593989503579
-Time: 2025-12-30 07:36:41
+[📋 744745]  ← Copy button
+
+[♻️ Number] [‼️ Backup]  ← Quick links
+```
+
+**Unknown Platform:**
+```
+🇪🇨 #EC Unknown +5939XXXXX539
 
 Message:
-Telegram code 744745...
+Your verification code is 123456...
 ```
 
 ## ⚙️ Configuration
@@ -63,28 +73,40 @@ Telegram code 744745...
 ```javascript
 {
   pollInterval: 5000,      // 5 seconds
+  maxMessageAge: 290,      // Skip old messages
   logLevel: 'DEBUG',       // DEBUG, INFO, WARN, ERROR
-  enableFileLogging: true,
-  logDir: './logs'
 }
 ```
 
-## 📁 Files
+## 📁 Project Structure
 
 ```
-├── bot.js              # Main bot
+├── bot.js              # Main entry point
 ├── config.js           # Settings
+├── .env                # Environment variables
 ├── state.json          # Last seen timestamp
-├── subscribers.json    # Users/groups
-├── logs/               # Log files
+├── subscribers.json    # Subscribed groups
 └── modules/
-    ├── api.js          # API fetching
-    ├── telegram.js     # Telegram bot
-    ├── subscribers.js  # Subscriber mgmt
-    ├── phone.js        # Phone formatting
+    ├── api.js          # API fetching + auto-retry
+    ├── auth.js         # Auto-login on session expire
+    ├── telegram.js     # Telegram bot + notifications
+    ├── platform.js     # Platform detection (TG/FB/WA)
+    ├── phone.js        # Phone formatting + masking
     ├── otp.js          # OTP extraction
-    └── logger.js       # Logging
+    ├── subscribers.js  # Subscriber management
+    ├── state.js        # State persistence
+    └── logger.js       # Console logging
 ```
+
+## 🔐 Auto Session Renewal
+
+When the session cookie expires:
+1. Bot detects API failure
+2. Auto-fetches login page
+3. Solves math captcha
+4. Submits login form
+5. Saves new cookie to `.env`
+6. Retries API request
 
 ## 📝 License
 
