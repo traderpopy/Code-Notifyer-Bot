@@ -1,5 +1,5 @@
 export const CONFIG = {
-    apiUrl: process.env.API_URL || 'http://185.2.83.39/ints/client/res/data_smscdr.php',
+    apiUrl: process.env.API_URL,
     sessionCookie: process.env.SESSION_COOKIE,
     botToken: process.env.TELEGRAM_BOT_TOKEN,
 
