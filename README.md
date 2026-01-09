@@ -43,6 +43,8 @@ A robust, enterprise-grade Telegram bot designed for real-time OTP monitoring an
     TELEGRAM_BOT_TOKEN=your_bot_token
     ADMIN_ID=your_telegram_id
     API_URL=http://your-api-url.com
+    LOGIN_USERNAME=your_username
+    LOGIN_PASSWORD=your_password
     ```
 
 4.  **Start the Bot**
