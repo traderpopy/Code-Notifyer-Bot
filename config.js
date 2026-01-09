@@ -1,7 +1,20 @@
+const getApiUrl = () => {
+    let url = process.env.API_URL || 'http://185.2.83.39';
+    // Remove trailing slash if present
+    url = url.replace(/\/$/, '');
+    
+    // If it's just the IP/domain, append the standard path
+    if (!url.includes('.php')) {
+        return `${url}/ints/client/res/data_smscdr.php`;
+    }
+    return url;
+};
+
 export const CONFIG = {
-    apiUrl: process.env.API_URL,
+    apiUrl: getApiUrl(),
     sessionCookie: process.env.SESSION_COOKIE,
     botToken: process.env.TELEGRAM_BOT_TOKEN,
+    adminId: process.env.ADMIN_ID,
     loginUsername: process.env.LOGIN_USERNAME,
     loginPassword: process.env.LOGIN_PASSWORD,
 

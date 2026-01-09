@@ -58,8 +58,8 @@ export const PLATFORMS = {
     },
     unknown: {
         icon: '❓',
-        name: 'Unknown',
-        short: 'Unknown',
+        name: 'Others',
+        short: 'Others',
         keywords: [],
         codePatterns: []
     }

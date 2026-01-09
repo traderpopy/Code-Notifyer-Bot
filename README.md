@@ -1,113 +1,89 @@
-# 📱 Telegram OTP Monitor Bot
+# Code Notifyer Bot
 
-Monitors an SMS API for OTP codes and broadcasts them to Telegram groups with platform detection and auto-session renewal.
+A robust, enterprise-grade Telegram bot designed for real-time OTP monitoring and broadcasting. Features autonomous session management, intelligent platform detection, and remote administration capabilities.
 
-## ✨ Features
+## ✨ Key Features
 
-- ⚡ **Real-time polling** - Checks every 5 seconds
-- 🔐 **Auto session renewal** - Automatically re-logs when session expires
-- 🏷️ **Platform detection** - Identifies Telegram, Facebook, WhatsApp OTPs
-- 📋 **Copy button** - One-tap copy OTP code to clipboard
-- 🌍 **Auto country flags** - Detects country from phone number
-- 🔒 **Masked numbers** - Shows `+5939XXXXX539` format
-- 👥 **Groups only** - `/subscribe` works in groups only
+- **Real-time Monitoring**: High-frequency polling ensures instant OTP delivery.
+- **Autonomous Authentication**: Self-healing session management with auto-login and captcha solving.
+- **Intelligent Detection**: Automatically identifies source platforms (Telegram, Facebook, WhatsApp).
+- **Remote Administration**: Configure credentials and API endpoints directly via Telegram.
+- **Privacy First**: Smart phone number masking and secure credential storage.
+- **Group Management**: Dedicated subscription system for team coordination.
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-### 1. Install
+### Prerequisites
 
-```bash
-bun install
-```
+- [Node.js](https://nodejs.org/) (v18+) or [Bun](https://bun.sh/)
 
-### 2. Configure
+### Installation
 
-Create `.env` file:
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/yourusername/code-notifyer-bot.git
+    cd code-notifyer-bot
+    ```
 
-```env
-TELEGRAM_BOT_TOKEN=your_bot_token
-SESSION_COOKIE=PHPSESSID=your_session
-```
+2.  **Install dependencies**
+    ```bash
+    bun install
+    # or
+    npm install
+    ```
 
-Or edit `config.js` directly.
+3.  **Configuration**
+    Copy the environment template and fill in your details:
+    ```bash
+    cp .env.example .env
+    ```
+    
+    *Minimal setup required in `.env`:*
+    ```ini
+    TELEGRAM_BOT_TOKEN=your_bot_token
+    ADMIN_ID=your_telegram_id
+    API_URL=http://your-api-url.com
+    ```
 
-### 3. Run
+4.  **Start the Bot**
+    ```bash
+    bun start
+    # or
+    npm start
+    ```
 
-```bash
-bun start
-```
+## 🎮 Usage
 
-## 📲 Usage
+### User Commands
 
-### Subscribe
-- Add bot to a group and send `/subscribe`
-- Individual users are not supported
-
-### Commands
 | Command | Description |
-|---------|-------------|
-| `/subscribe` | Subscribe group to notifications |
-| `/stats` | View subscriber count |
+|:---|:---|
+| `/subscribe` | Activates OTP notifications for the current group. |
+| `/stats` | Displays system status and subscriber metrics. |
 
-## 📤 Message Format
+### Admin Commands
 
-**Known Platform (Telegram/Facebook/WhatsApp):**
-```
-🇪🇨 #EC #TG +5939XXXXX539
+| Command | Description |
+|:---|:---|
+| `/config` | Opens the interactive configuration panel (Private Chat only). |
 
-[📋 744745]  ← Copy button
+*> Note: The `/config` command is restricted to the user defined in `ADMIN_ID`.*
 
-[♻️ Number] [‼️ Backup]  ← Quick links
-```
+## ⚙️ Advanced Configuration
 
-**Unknown Platform:**
-```
-🇪🇨 #EC Unknown +5939XXXXX539
+The bot is fully configurable via the `.env` file. Key parameters include:
 
-Message:
-Your verification code is 123456...
-```
+- **Polling Interval**: Adjust `POLL_INTERVAL` for frequency control.
+- **Retry Strategy**: Configure `MAX_RETRIES` and `RETRY_DELAY` for network resilience.
+- **Logging**: Set `LOG_LEVEL` (INFO/DEBUG) and enable/disable file logging.
 
-## ⚙️ Configuration
+## 🛠️ Technology Stack
 
-```javascript
-{
-  pollInterval: 5000,      // 5 seconds
-  maxMessageAge: 290,      // Skip old messages
-  logLevel: 'DEBUG',       // DEBUG, INFO, WARN, ERROR
-}
-```
+- **Runtime**: Node.js / Bun
+- **Framework**: Telegraf
+- **State Management**: JSON-based persistence
+- **Security**: Environment variable isolation, automated session handling
 
-## 📁 Project Structure
+## 📄 License
 
-```
-├── bot.js              # Main entry point
-├── config.js           # Settings
-├── .env                # Environment variables
-├── state.json          # Last seen timestamp
-├── subscribers.json    # Subscribed groups
-└── modules/
-    ├── api.js          # API fetching + auto-retry
-    ├── auth.js         # Auto-login on session expire
-    ├── telegram.js     # Telegram bot + notifications
-    ├── platform.js     # Platform detection (TG/FB/WA)
-    ├── phone.js        # Phone formatting + masking
-    ├── otp.js          # OTP extraction
-    ├── subscribers.js  # Subscriber management
-    ├── state.js        # State persistence
-    └── logger.js       # Console logging
-```
-
-## 🔐 Auto Session Renewal
-
-When the session cookie expires:
-1. Bot detects API failure
-2. Auto-fetches login page
-3. Solves math captcha
-4. Submits login form
-5. Saves new cookie to `.env`
-6. Retries API request
-
-## 📝 License
-
-MIT
+This project is licensed under the MIT License.

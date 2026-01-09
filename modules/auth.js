@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { CONFIG } from '../config.js';
+import { updateEnvVariable } from './env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +19,7 @@ const LOGIN_CREDENTIALS = {
     username: CONFIG.loginUsername,
     password: CONFIG.loginPassword
 };
+
 
 // Current session cookie (in-memory)
 let currentSessionCookie = null;
@@ -129,35 +131,6 @@ function httpRequest(method, urlPath, cookie = null, postData = null, followRedi
 }
 
 /**
- * Update .env file with new session cookie
- */
-function updateEnvFile(cookie) {
-    const envPath = path.join(__dirname, '..', '.env');
-    let envContent = '';
-
-    if (fs.existsSync(envPath)) {
-        envContent = fs.readFileSync(envPath, 'utf8');
-    }
-
-    const lines = envContent.split('\n').filter(line => line.trim() !== '');
-    let found = false;
-
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('SESSION_COOKIE=')) {
-            lines[i] = `SESSION_COOKIE=PHPSESSID=${cookie}`;
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
-        lines.push(`SESSION_COOKIE=PHPSESSID=${cookie}`);
-    }
-
-    fs.writeFileSync(envPath, lines.join('\n') + '\n');
-}
-
-/**
  * Perform login and get new session cookie
  * @returns {Promise<string|null>} Session cookie or null on failure
  */
@@ -196,7 +169,7 @@ export async function login() {
             currentSessionCookie = `PHPSESSID=${loginResult.cookie}`;
 
             // Save to .env file
-            updateEnvFile(loginResult.cookie);
+            updateEnvVariable('SESSION_COOKIE', `PHPSESSID=${loginResult.cookie}`);
             console.log('✅ [AUTH] Session saved to .env');
 
             return currentSessionCookie;

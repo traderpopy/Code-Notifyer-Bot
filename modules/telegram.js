@@ -1,5 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
 import { CONFIG } from '../config.js';
+import { updateEnvVariable } from './env.js';
 import {
     loadSubscribers,
     addGroup,
@@ -11,6 +12,7 @@ import { detectPlatform, getPlatformInfo, isKnownPlatform } from './platform.js'
 import { maskPhoneNumber } from './phone.js';
 
 let bot = null;
+const userState = new Map(); // Store user state for interactive config
 
 // Quick action button URLs
 const BUTTON_LINKS = {
@@ -50,6 +52,82 @@ export function initTelegram() {
     bot.command('stats', (ctx) => {
         const stats = getStats();
         ctx.reply(`📊 <b>Bot Statistics</b>\n\n👥 Groups: ${stats.groups}\n📬 Total subscribers: ${stats.total}`, { parse_mode: 'HTML' });
+    });
+
+    // ADMIN CONFIGURATION COMMAND
+    bot.command('config', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) {
+            return; // Ignore non-admins if ADMIN_ID is set
+        }
+
+        ctx.reply('⚙️ <b>Bot Configuration</b>\n\nSelect a setting to change:', {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('👤 Set Username', 'config_username')],
+                [Markup.button.callback('🔑 Set Password', 'config_password')],
+                [Markup.button.callback('🌐 Set API URL', 'config_api_url')],
+                [Markup.button.callback('❌ Cancel', 'config_cancel')]
+            ])
+        });
+    });
+
+    // Handle config buttons
+    bot.action('config_username', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        userState.set(ctx.from.id, 'WAITING_USERNAME');
+        ctx.editMessageText('👤 <b>Set Username</b>\n\nPlease reply with the new username:', { parse_mode: 'HTML' });
+    });
+
+    bot.action('config_password', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        userState.set(ctx.from.id, 'WAITING_PASSWORD');
+        ctx.editMessageText('🔑 <b>Set Password</b>\n\nPlease reply with the new password:', { parse_mode: 'HTML' });
+    });
+
+    bot.action('config_api_url', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        userState.set(ctx.from.id, 'WAITING_API_URL');
+        ctx.editMessageText('🌐 <b>Set API URL</b>\n\nPlease reply with the new base URL (e.g., http://1.2.3.4):', { parse_mode: 'HTML' });
+    });
+
+    bot.action('config_cancel', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        userState.delete(ctx.from.id);
+        ctx.editMessageText('⚙️ Configuration cancelled.');
+    });
+
+    // Handle text input for config
+    bot.on('text', (ctx, next) => {
+        const userId = ctx.from.id;
+        if (!userState.has(userId)) {
+            return next();
+        }
+
+        const state = userState.get(userId);
+        const text = ctx.message.text.trim();
+
+        if (state === 'WAITING_USERNAME') {
+            updateEnvVariable('LOGIN_USERNAME', text);
+            CONFIG.loginUsername = text; // Update memory
+            ctx.reply(`✅ Username updated to: <code>${text}</code>`, { parse_mode: 'HTML' });
+            userState.delete(userId);
+        } else if (state === 'WAITING_PASSWORD') {
+            updateEnvVariable('LOGIN_PASSWORD', text);
+            CONFIG.loginPassword = text; // Update memory
+            ctx.reply('✅ Password updated successfully!', { parse_mode: 'HTML' });
+            userState.delete(userId);
+        } else if (state === 'WAITING_API_URL') {
+            updateEnvVariable('API_URL', text);
+            // Need to update CONFIG.apiUrl logic as well
+            let url = text.replace(/\/$/, '');
+            if (!url.includes('.php')) {
+                CONFIG.apiUrl = `${url}/ints/client/res/data_smscdr.php`;
+            } else {
+                CONFIG.apiUrl = url;
+            }
+            ctx.reply(`✅ API URL updated to: <code>${text}</code>`, { parse_mode: 'HTML' });
+            userState.delete(userId);
+        }
     });
 
     bot.on('my_chat_member', (ctx) => {
@@ -105,7 +183,9 @@ function formatKnownPlatformNotification(data) {
     const { flag, countryCode, platformInfo, maskedPhone } = data;
     const countryShort = countryCode || 'XX';
 
-    return `${flag} #${countryShort} #${platformInfo.short} ${maskedPhone}`;
+    return `${flag} #${countryShort} #${platformInfo.short} ${maskedPhone}
+
+<b>developed by <a href="https://t.me/Cryptoistaken">Cryptoistaken</a></b>`;
 }
 
 /**
@@ -116,10 +196,12 @@ function formatUnknownPlatformNotification(data) {
     const { flag, countryCode, maskedPhone, rawMessage } = data;
     const countryShort = countryCode || 'XX';
 
-    return `${flag} #${countryShort} Unknown ${maskedPhone}
+    return `${flag} #${countryShort} Others ${maskedPhone}
 
 <b>Message:</b>
-<pre>${escapeHtml(rawMessage)}</pre>`;
+<pre>${escapeHtml(rawMessage)}</pre>
+
+<b>developed by <a href="https://t.me/Cryptoistaken">Cryptoistaken</a></b>`;
 }
 
 /**
