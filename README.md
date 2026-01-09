@@ -71,6 +71,30 @@ A robust, enterprise-grade Telegram bot designed for real-time OTP monitoring an
 
 *> Note: The `/config` command is restricted to the user defined in `ADMIN_ID`.*
 
+## 📤 Message Format
+
+**Known Platform (Telegram/Facebook/WhatsApp):**
+```
+🇪🇨 #EC #TG +5939XXXXX539
+
+developed by Cryptoistaken
+
+[📋 744745]  ← Copy button
+[♻️ Number] [‼️ Backup]  ← Quick links
+```
+
+**Others / Unknown Platform:**
+```
+🇪🇨 #EC Others +5939XXXXX539
+
+Message:
+Your verification code is 123456...
+
+developed by Cryptoistaken
+
+[♻️ Number] [‼️ Backup]  ← Quick links
+```
+
 ## ⚙️ Advanced Configuration
 
 The bot is fully configurable via the `.env` file. Key parameters include:
