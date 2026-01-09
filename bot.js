@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { CONFIG } from './config.js';
 import { fetchMessages } from './modules/api.js';
 import { extractOtp } from './modules/otp.js';

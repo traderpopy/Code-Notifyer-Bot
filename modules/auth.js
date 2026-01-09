@@ -8,14 +8,15 @@ import querystring from 'querystring';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { CONFIG } from '../config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Login credentials (should be in env for production)
+// Login credentials
 const LOGIN_CREDENTIALS = {
-    username: 'kstotp',
-    password: '11223344@'
+    username: CONFIG.loginUsername,
+    password: CONFIG.loginPassword
 };
 
 // Current session cookie (in-memory)

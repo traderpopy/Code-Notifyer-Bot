@@ -2,23 +2,25 @@ export const CONFIG = {
     apiUrl: process.env.API_URL,
     sessionCookie: process.env.SESSION_COOKIE,
     botToken: process.env.TELEGRAM_BOT_TOKEN,
+    loginUsername: process.env.LOGIN_USERNAME,
+    loginPassword: process.env.LOGIN_PASSWORD,
 
-    pollInterval: 1000,
-    maxMessageAge: 290,
-    fetchWindowMinutes: 5,
-    clockSkewTolerance: 10,
+    pollInterval: parseInt(process.env.POLL_INTERVAL),
+    maxMessageAge: parseInt(process.env.MAX_MESSAGE_AGE),
+    fetchWindowMinutes: parseInt(process.env.FETCH_WINDOW_MINUTES),
+    clockSkewTolerance: parseInt(process.env.CLOCK_SKEW_TOLERANCE),
 
-    cacheRetentionSeconds: 300,
-    maxCacheSize: 100,
+    cacheRetentionSeconds: parseInt(process.env.CACHE_RETENTION_SECONDS),
+    maxCacheSize: parseInt(process.env.MAX_CACHE_SIZE),
 
-    skipExistingOnStart: true,
+    skipExistingOnStart: process.env.SKIP_EXISTING_ON_START === 'true',
 
-    maxRetries: 3,
-    retryDelay: 2000,
+    maxRetries: parseInt(process.env.MAX_RETRIES),
+    retryDelay: parseInt(process.env.RETRY_DELAY),
 
-    stateFile: './state.json',
+    stateFile: process.env.STATE_FILE,
 
-    logLevel: process.env.LOG_LEVEL || 'INFO',
-    enableFileLogging: false,
-    logDir: './logs'
+    logLevel: process.env.LOG_LEVEL,
+    enableFileLogging: process.env.ENABLE_FILE_LOGGING === 'true',
+    logDir: process.env.LOG_DIR
 };

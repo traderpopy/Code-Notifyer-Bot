@@ -9,6 +9,7 @@
     "dev": "node --watch bot.js"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "libphonenumber-js": "^1.11.17",
     "telegraf": "^4.16.3"
   },
