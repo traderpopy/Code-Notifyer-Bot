@@ -56,6 +56,15 @@ A robust, enterprise-grade Telegram bot designed for real-time OTP monitoring an
 
 ## 🎮 Usage
 
+### Subscribing to Notifications
+
+To receive OTP notifications in a Telegram group, follow these steps:
+
+1.  **Add the Bot**: Add the bot to your Telegram group as a member.
+2.  **Grant Permissions**: Ensure the bot has permissions to send messages (standard for members).
+3.  **Activate Subscription**: Send the `/subscribe` command **inside the group**.
+4.  **Confirmation**: The bot will reply confirming that the group is now subscribed.
+
 ### User Commands
 
 | Command | Description |
