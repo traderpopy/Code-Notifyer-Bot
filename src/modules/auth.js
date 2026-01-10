@@ -27,7 +27,7 @@ const LOGIN_CREDENTIALS = {
  * @returns {string} New resolved path
  * @throws {Error} If cross-domain redirect or invalid URL
  */
-function resolveRedirect(location, currentPath, baseUrl = 'http://185.2.83.39') {
+function resolveRedirect(location, currentPath, baseUrl = CONFIG.baseUrl) {
     if (!location) throw new Error('Empty redirect location');
 
     // Handle absolute URLs

@@ -1,21 +1,24 @@
-const getApiUrl = () => {
+// Helper: Get Base URL
+const getBaseUrl = () => {
     let url = process.env.API_URL || 'http://185.2.83.39';
-    // Remove trailing slash if present
-    url = url.replace(/\/$/, '');
-
-    // If it's just the IP/domain, append the standard path
-    if (!url.includes('.php')) {
-        return `${url}/ints/client/res/data_smscdr.php`;
-    }
-    return url;
-    return url;
+    return url.replace(/\/$/, '');
 };
 
+const getApiUrl = () => {
+    const base = getBaseUrl();
+    // If it's just the IP/domain, append the standard path
+    if (!base.includes('.php')) {
+        return `${base}/ints/client/res/data_smscdr.php`;
+    }
+    return base;
+};
+
+// Start validation...
 // Helper: Validate required env vars
 function validateRequiredEnv(keys) {
     const missing = keys.filter(key => !process.env[key]);
     if (missing.length > 0) {
-        throw new Error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+        throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }
 }
 
@@ -23,6 +26,7 @@ function validateRequiredEnv(keys) {
 validateRequiredEnv(['SESSION_COOKIE', 'TELEGRAM_BOT_TOKEN', 'ADMIN_ID', 'LOGIN_USERNAME', 'LOGIN_PASSWORD']);
 
 export const CONFIG = {
+    baseUrl: getBaseUrl(),
     apiUrl: getApiUrl(),
     sessionCookie: process.env.SESSION_COOKIE,
     botToken: process.env.TELEGRAM_BOT_TOKEN,

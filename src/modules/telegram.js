@@ -53,63 +53,119 @@ export function initTelegram() {
         ctx.reply(`📊 <b>Bot Statistics</b>\n\n👥 Groups: ${stats.groups}\n📬 Total subscribers: ${stats.total}`, { parse_mode: 'HTML' });
     });
 
-    // ADMIN CONFIGURATION COMMAND
+    // ADMIN CONFIGURATION COMMAND - MAIN MENU
     bot.command('config', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) {
             return; // Ignore non-admins if ADMIN_ID is set
         }
 
-        ctx.reply('⚙️ <b>Bot Configuration</b>\n\nSelect a setting to change:', {
+        ctx.reply('<b>Bot Configuration</b>\n\nSelect a category:', {
             parse_mode: 'HTML',
             ...Markup.inlineKeyboard([
                 [
-                    Markup.button.callback('🔑 Set Password', 'config_password'),
-                    Markup.button.callback('🌐 Set API URL', 'config_api_url')
+                    Markup.button.callback('Security Settings', 'config_menu_security'),
+                    Markup.button.callback('Footer Settings', 'config_menu_footer')
                 ],
                 [
-                    Markup.button.callback('✏️ Footer Text', 'config_footer_text'),
-                    Markup.button.callback('🔗 Footer Link', 'config_footer_link')
+                    Markup.button.callback('Button Settings', 'config_menu_buttons')
                 ],
-                [
-                    Markup.button.callback('✏️ Num Btn Txt', 'config_btn_num_text'),
-                    Markup.button.callback('🔗 Num Btn Url', 'config_btn_num_url')
-                ],
-                [
-                    Markup.button.callback('✏️ Bak Btn Txt', 'config_btn_bak_text'),
-                    Markup.button.callback('🔗 Bak Btn Url', 'config_btn_bak_url')
-                ],
-                [Markup.button.callback('❌ Close', 'config_cancel')]
+                [Markup.button.callback('Close', 'config_cancel')]
             ])
         });
     });
 
-    // Handle config buttons
-    // Username config removed as requested
+    // --- MENUS ---
+
+    // Security Menu
+    bot.action('config_menu_security', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        ctx.editMessageText('<b>Security Settings</b>\n\nSelect an option:', {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('Set Username', 'config_username')],
+                [Markup.button.callback('Set Password', 'config_password')],
+                [Markup.button.callback('Set API URL', 'config_api_url')],
+                [Markup.button.callback('« Back', 'config_back')]
+            ])
+        });
+    });
+
+    // Footer Menu
+    bot.action('config_menu_footer', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        ctx.editMessageText('<b>Footer Settings</b>\n\nSelect an option:', {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('Set Footer Text', 'config_footer_text')],
+                [Markup.button.callback('Set Footer Link', 'config_footer_link')],
+                [Markup.button.callback('« Back', 'config_back')]
+            ])
+        });
+    });
+
+    // Buttons Menu
+    bot.action('config_menu_buttons', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        ctx.editMessageText('<b>Button Settings</b>\n\nSelect an option:', {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+                [Markup.button.callback('Num Btn Text', 'config_btn_num_text'), Markup.button.callback('Num Btn Url', 'config_btn_num_url')],
+                [Markup.button.callback('Bak Btn Text', 'config_btn_bak_text'), Markup.button.callback('Bak Btn Url', 'config_btn_bak_url')],
+                [Markup.button.callback('« Back', 'config_back')]
+            ])
+        });
+    });
+
+    // Back Action (Return to Main Menu)
+    bot.action('config_back', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        ctx.editMessageText('<b>Bot Configuration</b>\n\nSelect a category:', {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([
+                [
+                    Markup.button.callback('Security Settings', 'config_menu_security'),
+                    Markup.button.callback('Footer Settings', 'config_menu_footer')
+                ],
+                [
+                    Markup.button.callback('Button Settings', 'config_menu_buttons')
+                ],
+                [Markup.button.callback('Close', 'config_cancel')]
+            ])
+        });
+    });
+
+    // --- CONFIG ACTIONS ---
+
+    bot.action('config_username', (ctx) => {
+        if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
+        userState.set(ctx.from.id, 'WAITING_USERNAME');
+        ctx.editMessageText('<b>Set Username</b>\n\nPlease reply with the new username:', { parse_mode: 'HTML' });
+    });
 
     bot.action('config_password', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_PASSWORD');
-        ctx.editMessageText('🔑 <b>Set Password</b>\n\nPlease reply with the new password:', { parse_mode: 'HTML' });
+        ctx.editMessageText('<b>Set Password</b>\n\nPlease reply with the new password:', { parse_mode: 'HTML' });
     });
 
     bot.action('config_api_url', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_API_URL');
-        ctx.editMessageText('🌐 <b>Set API URL</b>\n\nPlease reply with the new base URL (e.g., http://1.2.3.4):', { parse_mode: 'HTML' });
+        ctx.editMessageText('<b>Set API URL</b>\n\nPlease reply with the new base URL (e.g., http://1.2.3.4):', { parse_mode: 'HTML' });
     });
 
     bot.action('config_footer_text', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_FOOTER_TEXT');
         const current = getFooterSettings().text;
-        ctx.editMessageText(`✏️ <b>Set Footer Text</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new text:`, { parse_mode: 'HTML' });
+        ctx.editMessageText(`<b>Set Footer Text</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new text:`, { parse_mode: 'HTML' });
     });
 
     bot.action('config_footer_link', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_FOOTER_LINK');
         const current = getFooterSettings().link;
-        ctx.editMessageText(`🔗 <b>Set Footer Link</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new link (URL):`, { parse_mode: 'HTML' });
+        ctx.editMessageText(`<b>Set Footer Link</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new link (URL):`, { parse_mode: 'HTML' });
     });
 
     // Button Config Actions
@@ -117,34 +173,34 @@ export function initTelegram() {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_BTN_NUMBER_TEXT');
         const current = getButtonSettings().numberText;
-        ctx.editMessageText(`✏️ <b>Set Number Btn Text</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new text:`, { parse_mode: 'HTML' });
+        ctx.editMessageText(`<b>Set Number Btn Text</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new text:`, { parse_mode: 'HTML' });
     });
 
     bot.action('config_btn_num_url', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_BTN_NUMBER_URL');
         const current = getButtonSettings().numberUrl;
-        ctx.editMessageText(`🔗 <b>Set Number Btn Link</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new URL:`, { parse_mode: 'HTML' });
+        ctx.editMessageText(`<b>Set Number Btn Link</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new URL:`, { parse_mode: 'HTML' });
     });
 
     bot.action('config_btn_bak_text', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_BTN_BACKUP_TEXT');
         const current = getButtonSettings().backupText;
-        ctx.editMessageText(`✏️ <b>Set Backup Btn Text</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new text:`, { parse_mode: 'HTML' });
+        ctx.editMessageText(`<b>Set Backup Btn Text</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new text:`, { parse_mode: 'HTML' });
     });
 
     bot.action('config_btn_bak_url', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.set(ctx.from.id, 'WAITING_BTN_BACKUP_URL');
         const current = getButtonSettings().backupUrl;
-        ctx.editMessageText(`🔗 <b>Set Backup Btn Link</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new URL:`, { parse_mode: 'HTML' });
+        ctx.editMessageText(`<b>Set Backup Btn Link</b>\n\nCurrent: <code>${escapeHtml(current)}</code>\n\nPlease reply with the new URL:`, { parse_mode: 'HTML' });
     });
 
     bot.action('config_cancel', (ctx) => {
         if (CONFIG.adminId && String(ctx.from.id) !== String(CONFIG.adminId)) return;
         userState.delete(ctx.from.id);
-        ctx.editMessageText('⚙️ Configuration cancelled.');
+        ctx.editMessageText('Configuration cancelled.');
     });
 
     // Handle text input for config
@@ -158,10 +214,15 @@ export function initTelegram() {
         const text = ctx.message.text.trim();
         const safeText = escapeHtml(text);
 
-        if (state === 'WAITING_PASSWORD') {
+        if (state === 'WAITING_USERNAME') {
+            updateEnvVariable('LOGIN_USERNAME', text);
+            CONFIG.loginUsername = text; // Update memory
+            ctx.reply(`Username updated to: <b>${safeText}</b>`, { parse_mode: 'HTML' });
+            userState.delete(userId);
+        } else if (state === 'WAITING_PASSWORD') {
             updateEnvVariable('LOGIN_PASSWORD', text);
             CONFIG.loginPassword = text; // Update memory
-            ctx.reply('✅ Password updated successfully!', { parse_mode: 'HTML' });
+            ctx.reply('Password updated successfully!', { parse_mode: 'HTML' });
             userState.delete(userId);
         } else if (state === 'WAITING_API_URL') {
             updateEnvVariable('API_URL', text);
@@ -172,31 +233,31 @@ export function initTelegram() {
             } else {
                 CONFIG.apiUrl = url;
             }
-            ctx.reply(`✅ API URL updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
+            ctx.reply(`API URL updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
             userState.delete(userId);
         } else if (state === 'WAITING_FOOTER_TEXT') {
             updateFooterSettings(text, null);
-            ctx.reply(`✅ Footer text updated to: <b>${safeText}</b>`, { parse_mode: 'HTML' });
+            ctx.reply(`Footer text updated to: <b>${safeText}</b>`, { parse_mode: 'HTML' });
             userState.delete(userId);
         } else if (state === 'WAITING_FOOTER_LINK') {
             updateFooterSettings(null, text);
-            ctx.reply(`✅ Footer link updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
+            ctx.reply(`Footer link updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
             userState.delete(userId);
         } else if (state === 'WAITING_BTN_NUMBER_TEXT') {
             updateButtonSettings({ numberText: text });
-            ctx.reply(`✅ Number button text updated to: <b>${safeText}</b>`, { parse_mode: 'HTML' });
+            ctx.reply(`Number button text updated to: <b>${safeText}</b>`, { parse_mode: 'HTML' });
             userState.delete(userId);
         } else if (state === 'WAITING_BTN_NUMBER_URL') {
             updateButtonSettings({ numberUrl: text });
-            ctx.reply(`✅ Number button URL updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
+            ctx.reply(`Number button URL updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
             userState.delete(userId);
         } else if (state === 'WAITING_BTN_BACKUP_TEXT') {
             updateButtonSettings({ backupText: text });
-            ctx.reply(`✅ Backup button text updated to: <b>${safeText}</b>`, { parse_mode: 'HTML' });
+            ctx.reply(`Backup button text updated to: <b>${safeText}</b>`, { parse_mode: 'HTML' });
             userState.delete(userId);
         } else if (state === 'WAITING_BTN_BACKUP_URL') {
             updateButtonSettings({ backupUrl: text });
-            ctx.reply(`✅ Backup button URL updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
+            ctx.reply(`Backup button URL updated to: <code>${safeText}</code>`, { parse_mode: 'HTML' });
             userState.delete(userId);
         }
     });

@@ -45,35 +45,35 @@ function writeToFile(content) {
 export function debug(category, message, data = null) {
     if (!shouldLog('DEBUG')) return;
     const output = formatLog('DEBUG', category, message, data);
-    console.log(`🔍 ${output}`);
+    console.log(`[DEBUG] ${output}`);
     writeToFile(output);
 }
 
 export function info(category, message, data = null) {
     if (!shouldLog('INFO')) return;
     const output = formatLog('INFO', category, message, data);
-    console.log(`ℹ️  ${output}`);
+    console.log(`[INFO] ${output}`);
     writeToFile(output);
 }
 
 export function warn(category, message, data = null) {
     if (!shouldLog('WARN')) return;
     const output = formatLog('WARN', category, message, data);
-    console.warn(`⚠️  ${output}`);
+    console.warn(`[WARN] ${output}`);
     writeToFile(output);
 }
 
 export function error(category, message, data = null) {
     if (!shouldLog('ERROR')) return;
     const output = formatLog('ERROR', category, message, data);
-    console.error(`❌ ${output}`);
+    console.error(`[ERROR] ${output}`);
     writeToFile(output);
 }
 
 export function success(category, message, data = null) {
     if (!shouldLog('INFO')) return;
     const output = formatLog('INFO', category, message, data);
-    console.log(`✅ ${output}`);
+    console.log(`[SUCCESS] ${output}`);
     writeToFile(output);
 }
 
@@ -95,7 +95,7 @@ export function logOtp(otp, phone, flag, timestamp, status) {
 
     const output = `
 ╔════════════════════════════════════════════════════════════╗
-║  OTP ${status === 'SENT' ? '📤 SENT' : status === 'SKIPPED' ? '⏭️  SKIPPED' : '❌ FAILED'}
+║  OTP ${status === 'SENT' ? 'SENT' : status === 'SKIPPED' ? 'SKIPPED' : 'FAILED'}
 ╠════════════════════════════════════════════════════════════╣
 ║  Code:    ${maskedOtp.padEnd(20)}
 ║  Number:  ${(flag + ' ' + phone).padEnd(20)}
@@ -119,10 +119,10 @@ export function logApiResponse(totalMessages, newMessages, skippedMessages) {
     const timestamp = new Date().toLocaleTimeString();
 
     if (newMessages > 0) {
-        console.log(`✅ [${timestamp}] [API] Fetched: ${totalMessages} | 🆕 New: ${newMessages} | ⏭️ Skipped: ${skippedMessages}`);
+        console.log(`[${timestamp}] [API] Fetched: ${totalMessages} | New: ${newMessages} | Skipped: ${skippedMessages}`);
     } else {
         // If no new messages, stick to a muted info log or skip if you want total silence
-        console.log(`ℹ️  [${timestamp}] [API] Fetched: ${totalMessages} | New: 0 | Skipped: ${skippedMessages}`);
+        console.log(`[${timestamp}] [API] Fetched: ${totalMessages} | New: 0 | Skipped: ${skippedMessages}`);
     }
 
     writeToFile(`[${getTimestamp()}] [API] Total: ${totalMessages}, New: ${newMessages}, Skipped: ${skippedMessages}`);
