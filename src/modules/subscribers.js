@@ -1,11 +1,25 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const SUBSCRIBERS_FILE = './subscribers.json';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const SUBSCRIBERS_FILE = path.join(__dirname, '../../subscribers.json');
 
 let subscribers = {
     users: [],
     groups: []
 };
+
+// Queue to serialize writes
+let writeQueue = Promise.resolve();
+
+// Initialize: load synchronously once on startup or async if prefers
+// Since init is usually sync in this architecture, we keep load synchronous-like or await it at start.
+// Current usage in telegram.js calls loadSubscribers() synchronously. 
+// For safety, we can read synchronously on first load but write asynchronously.
+import { readFileSync, existsSync } from 'fs';
 
 export function loadSubscribers() {
     try {
@@ -15,17 +29,26 @@ export function loadSubscribers() {
             console.log(`📋 Loaded ${subscribers.users.length} users, ${subscribers.groups.length} groups`);
         }
     } catch (error) {
-        console.warn('⚠️ Failed to load subscribers, starting fresh');
+        console.warn('⚠️ Failed to load subscribers, starting fresh', error.message);
     }
     return subscribers;
 }
 
-export function saveSubscribers() {
+async function saveSubscribersAsync() {
     try {
-        writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(subscribers, null, 2), 'utf8');
+        await fs.writeFile(SUBSCRIBERS_FILE, JSON.stringify(subscribers, null, 2), 'utf8');
     } catch (error) {
         console.error('❌ Failed to save subscribers:', error.message);
     }
+}
+
+export function saveSubscribers() {
+    // Chain writes to prevent race conditions
+    writeQueue = writeQueue.then(() => saveSubscribersAsync()).catch(err => {
+        console.error('❌ Save queue error:', err.message);
+        throw err; // Propagate error so caller can detect failure
+    });
+    return writeQueue;
 }
 
 export function addUser(chatId, username = null, firstName = null) {
@@ -38,7 +61,8 @@ export function addUser(chatId, username = null, firstName = null) {
             joinedAt: new Date().toISOString()
         });
         saveSubscribers();
-        console.log(`➕ New user subscribed: ${firstName || username || chatId}`);
+        // Mask PII in logs
+        console.log(`➕ New user subscribed: ${chatId} (Masked PII)`);
         return true;
     }
     return false;

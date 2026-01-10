@@ -13,7 +13,13 @@ const DEFAULT_STATE = {
     botStartTime: null,
     lastProcessedTimestamp: null,
     recentMessageIds: [],
-    lastChecked: null
+    lastChecked: null,
+    footerText: '⚡ DEV',
+    footerLink: 'https://t.me/Cryptoistaken',
+    btnNumberText: '♻️ Number',
+    btnNumberUrl: 'https://t.me/number_panel_kst',
+    btnBackupText: '‼️ Backup',
+    btnBackupUrl: 'https://t.me/tg_account_method'
 };
 
 /**
@@ -26,6 +32,8 @@ export function loadState() {
             const data = readFileSync(CONFIG.stateFile, 'utf8');
             const state = JSON.parse(data);
             console.log('📂 Loaded existing state from', CONFIG.stateFile);
+
+            // Merge with default state to ensure new fields exist
             return { ...DEFAULT_STATE, ...state };
         }
     } catch (error) {
@@ -67,6 +75,10 @@ export function generateMessageId(number, timestamp, otp) {
  * @returns {boolean} True if already processed
  */
 export function isMessageProcessed(state, messageId) {
+    // Ensure array exists
+    if (!Array.isArray(state.recentMessageIds)) {
+        state.recentMessageIds = [];
+    }
     return state.recentMessageIds.includes(messageId);
 }
 
@@ -76,6 +88,10 @@ export function isMessageProcessed(state, messageId) {
  * @param {string} messageId - Message ID to add
  */
 export function addMessageToCache(state, messageId) {
+    if (!Array.isArray(state.recentMessageIds)) {
+        state.recentMessageIds = [];
+    }
+
     state.recentMessageIds.push(messageId);
 
     // Enforce max cache size
@@ -89,6 +105,8 @@ export function addMessageToCache(state, messageId) {
  * @param {Object} state - Current state (mutated)
  */
 export function cleanOldCacheEntries(state) {
+    if (!Array.isArray(state.recentMessageIds)) return;
+
     const now = new Date();
     const cutoffTime = new Date(now.getTime() - CONFIG.cacheRetentionSeconds * 1000);
 
@@ -110,7 +128,70 @@ export function cleanOldCacheEntries(state) {
  * @param {string} timestamp - New timestamp
  */
 export function updateLastTimestamp(state, timestamp) {
-    if (!state.lastProcessedTimestamp || timestamp > state.lastProcessedTimestamp) {
+    const newTime = new Date(timestamp).getTime();
+    const lastTime = state.lastProcessedTimestamp ? new Date(state.lastProcessedTimestamp).getTime() : 0;
+
+    if (!isNaN(newTime) && newTime > lastTime) {
         state.lastProcessedTimestamp = timestamp;
     }
+}
+
+/**
+ * Get current footer settings
+ * @returns {Object} {text, link}
+ */
+export function getFooterSettings() {
+    const state = loadState();
+    return {
+        text: state.footerText || DEFAULT_STATE.footerText,
+        link: state.footerLink || DEFAULT_STATE.footerLink
+    };
+}
+
+/**
+ * Update footer settings
+ * @param {string} text - New footer text (optional)
+ * @param {string} link - New footer link (optional)
+ */
+export function updateFooterSettings(text, link) {
+    const state = loadState();
+
+    if (text) state.footerText = text;
+    if (link) state.footerLink = link;
+
+    saveState(state);
+    return {
+        text: state.footerText,
+        link: state.footerLink
+    };
+}
+
+/**
+ * Get current button settings
+ * @returns {Object} {numberText, numberUrl, backupText, backupUrl}
+ */
+export function getButtonSettings() {
+    const state = loadState();
+    return {
+        numberText: state.btnNumberText || DEFAULT_STATE.btnNumberText,
+        numberUrl: state.btnNumberUrl || DEFAULT_STATE.btnNumberUrl,
+        backupText: state.btnBackupText || DEFAULT_STATE.btnBackupText,
+        backupUrl: state.btnBackupUrl || DEFAULT_STATE.btnBackupUrl
+    };
+}
+
+/**
+ * Update button settings
+ * @param {Object} settings - {numberText, numberUrl, backupText, backupUrl}
+ */
+export function updateButtonSettings(settings) {
+    const state = loadState();
+
+    if (settings.numberText) state.btnNumberText = settings.numberText;
+    if (settings.numberUrl) state.btnNumberUrl = settings.numberUrl;
+    if (settings.backupText) state.btnBackupText = settings.backupText;
+    if (settings.backupUrl) state.btnBackupUrl = settings.backupUrl;
+
+    saveState(state);
+    return getButtonSettings();
 }

@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "description": "Telegram OTP Monitor Bot - Monitors SMS API and forwards OTPs to Telegram",
   "type": "module",
-  "main": "bot.js",
   "scripts": {
-    "start": "node bot.js",
-    "dev": "node --watch bot.js"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

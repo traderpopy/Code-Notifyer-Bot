@@ -12,7 +12,15 @@ const __dirname = path.dirname(__filename);
  * @param {string} value - The value to set
  */
 export function updateEnvVariable(key, value) {
-    const envPath = path.join(__dirname, '..', '.env');
+    if ((key === undefined || key === null) || (value === undefined || value === null)) {
+        throw new Error('Key and value are required (cannot be null/undefined)');
+    }
+
+    if (/[\r\n]/.test(key) || /[\r\n]/.test(value)) {
+        throw new Error('Key and value cannot contain newlines');
+    }
+
+    const envPath = path.join(process.cwd(), '.env');
     let envContent = '';
 
     if (fs.existsSync(envPath)) {
@@ -23,10 +31,14 @@ export function updateEnvVariable(key, value) {
     let found = false;
 
     for (let i = 0; i < lines.length; i++) {
+        // Extract leading whitespace to preserve indentation
+        const match = lines[i].match(/^(\s*)/);
+        const leadingWhitespace = match ? match[1] : '';
         const line = lines[i].trim();
+
         // Match key=value but not comments
         if (line.startsWith(`${key}=`)) {
-            lines[i] = `${key}=${value}`;
+            lines[i] = `${leadingWhitespace}${key}=${value}`;
             found = true;
             break;
         }
@@ -45,7 +57,7 @@ export function updateEnvVariable(key, value) {
  * @returns {string|null} The value or null if not found
  */
 export function getEnvVariable(key) {
-    const envPath = path.join(__dirname, '..', '.env');
+    const envPath = path.join(process.cwd(), '.env');
     if (!fs.existsSync(envPath)) return null;
 
     const envContent = fs.readFileSync(envPath, 'utf8');
@@ -54,7 +66,24 @@ export function getEnvVariable(key) {
     for (const line of lines) {
         const trimmed = line.trim();
         if (trimmed.startsWith(`${key}=`)) {
-            return trimmed.substring(key.length + 1);
+            let value = trimmed.substring(key.length + 1).trim();
+
+            // Strip quotes if present
+            if ((value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.slice(1, -1);
+            } else {
+                // If not quoted, strip inline comments
+                const commentIndex = value.indexOf(' #');
+                if (commentIndex !== -1) {
+                    value = value.substring(0, commentIndex).trim();
+                }
+            }
+
+            // Return null for empty string to preserve "not found" semantics
+            if (value === '') return null;
+
+            return value;
         }
     }
 

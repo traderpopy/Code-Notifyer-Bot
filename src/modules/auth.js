@@ -4,15 +4,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import http from 'http';
+import https from 'https'; // Added for potential HTTPS requests
 import querystring from 'querystring';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { URL } from 'url'; // Added for URL parsing in resolveRedirect
 import { CONFIG } from '../config.js';
 import { updateEnvVariable } from './env.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Current session cookie (in-memory)
+let currentSessionCookie = null;
 
 // Login credentials
 const LOGIN_CREDENTIALS = {
@@ -20,19 +19,45 @@ const LOGIN_CREDENTIALS = {
     password: CONFIG.loginPassword
 };
 
-
-// Current session cookie (in-memory)
-let currentSessionCookie = null;
-
 /**
- * Solve the math captcha from login page HTML
+ * Resolve and validate redirect URL
+ * @param {string} location - Redirect location header
+ * @param {string} currentPath - Current request path
+ * @param {string} baseUrl - Base URL of the service (defaulting to config or inferred)
+ * @returns {string} New resolved path
+ * @throws {Error} If cross-domain redirect or invalid URL
  */
-function solveMathCaptcha(html) {
-    const match = html.match(/What is (\d+) \+ (\d+) = \?/);
-    if (match) {
-        return parseInt(match[1]) + parseInt(match[2]);
+function resolveRedirect(location, currentPath, baseUrl = 'http://185.2.83.39') {
+    if (!location) throw new Error('Empty redirect location');
+
+    // Handle absolute URLs
+    if (location.startsWith('http://') || location.startsWith('https://')) {
+        const urlObj = new URL(location);
+        const expectedHost = new URL(baseUrl).hostname;
+
+        if (urlObj.hostname !== expectedHost) {
+            throw new Error(`Cross-domain redirects not allowed: ${urlObj.hostname}`);
+        }
+
+        return urlObj.pathname + urlObj.search;
     }
-    return null;
+
+    // Handle relative paths
+    if (location === './') {
+        return '/ints/';
+    }
+
+    if (location.startsWith('./')) {
+        return '/ints/' + location.substring(2);
+    }
+
+    if (location.startsWith('/')) {
+        return location;
+    }
+
+    // Relative to current directory
+    const currentDir = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
+    return currentDir + location;
 }
 
 /**
@@ -89,19 +114,13 @@ function httpRequest(method, urlPath, cookie = null, postData = null, followRedi
                     }
 
                     const location = res.headers['location'];
-                    let newPath = location;
+                    let newPath;
 
-                    if (!location.startsWith('http')) {
-                        if (location === './') {
-                            newPath = '/ints/';
-                        } else if (location.startsWith('./')) {
-                            newPath = '/ints/' + location.substring(2);
-                        } else if (location.startsWith('/')) {
-                            newPath = location;
-                        } else {
-                            const currentDir = urlPath.substring(0, urlPath.lastIndexOf('/') + 1);
-                            newPath = currentDir + location;
-                        }
+                    try {
+                        newPath = resolveRedirect(location, urlPath);
+                    } catch (err) {
+                        console.error(`❌ [AUTH] Redirect error: ${err.message}`);
+                        return reject(err);
                     }
 
                     return httpRequest('GET', newPath, currentCookie, null, followRedirects, redirectCount + 1)
@@ -132,11 +151,19 @@ function httpRequest(method, urlPath, cookie = null, postData = null, followRedi
 
 /**
  * Perform login and get new session cookie
+ * @param {number} attempt - Current attempt number
  * @returns {Promise<string|null>} Session cookie or null on failure
  */
-export async function login() {
+export async function login(attempt = 1) {
+    const MAX_ATTEMPTS = 3;
+
+    if (attempt > MAX_ATTEMPTS) {
+        console.error('❌ [AUTH] Max login attempts reached');
+        return null;
+    }
+
     try {
-        console.log('🔐 [AUTH] Attempting to login...');
+        console.log(`🔐 [AUTH] Attempting to login (Attempt ${attempt}/${MAX_ATTEMPTS})...`);
 
         // Step 1: Get login page and cookie
         const loginPage = await httpRequest('GET', '/ints/signin');
@@ -177,11 +204,11 @@ export async function login() {
 
         if (loginResult.body.includes('Captcha Verification Failed')) {
             console.error('❌ [AUTH] Captcha verification failed, retrying...');
-            // Retry once
-            return await login();
+            // Retry with incremented attempt counter
+            return await login(attempt + 1);
         }
 
-        console.error('❌ [AUTH] Login failed - Unknown error');
+        console.error('❌ [AUTH] Login failed - Unknown response');
         return null;
 
     } catch (error) {
@@ -205,8 +232,8 @@ export function getSessionCookie() {
         return currentSessionCookie;
     }
 
-    // Fallback to config default
-    return 'PHPSESSID=89mjqe96d845np2mtd1l1m0cb4';
+    // No valid session
+    return null;
 }
 
 /**

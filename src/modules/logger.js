@@ -71,37 +71,60 @@ export function error(category, message, data = null) {
 }
 
 export function success(category, message, data = null) {
+    if (!shouldLog('INFO')) return;
     const output = formatLog('INFO', category, message, data);
     console.log(`✅ ${output}`);
     writeToFile(output);
 }
 
 export function logOtp(otp, phone, flag, timestamp, status) {
+    if (!shouldLog('INFO')) return;
+
+    // Improved masking logic
+    // For short codes (< 8 chars), reveal only 1st char: 1*****
+    // For longer codes, reveal first 2 chars: 12******
+    let maskedOtp;
+    if (otp.length < 8) {
+        maskedOtp = otp.substring(0, 1) + '*'.repeat(otp.length - 1);
+    } else {
+        maskedOtp = otp.substring(0, 2) + '*'.repeat(otp.length - 2);
+    }
+
+    // Safety fallback for empty/very short strings
+    if (otp.length === 0) maskedOtp = '';
+
     const output = `
 ╔════════════════════════════════════════════════════════════╗
 ║  OTP ${status === 'SENT' ? '📤 SENT' : status === 'SKIPPED' ? '⏭️  SKIPPED' : '❌ FAILED'}
 ╠════════════════════════════════════════════════════════════╣
-║  Code:    ${otp}
-║  Number:  ${flag} ${phone}
+║  Code:    ${maskedOtp.padEnd(20)}
+║  Number:  ${(flag + ' ' + phone).padEnd(20)}
 ║  Time:    ${timestamp}
 ║  Status:  ${status}
 ╚════════════════════════════════════════════════════════════╝`;
 
     console.log(output);
-    writeToFile(`[${getTimestamp()}] [OTP] ${status} | Code: ${otp} | Phone: ${phone} | Time: ${timestamp}`);
+    // Log MASKED OTP to file for security compliance (removing plaintext log risk)
+    writeToFile(`[${getTimestamp()}] [OTP] ${status} | Code: ${maskedOtp} | Phone: ${phone} | Time: ${timestamp}`);
 }
 
 export function logApiResponse(totalMessages, newMessages, skippedMessages) {
-    const output = `
-┌──────────────────────────────────────┐
-│  API Poll Results                    │
-├──────────────────────────────────────┤
-│  Total fetched:  ${String(totalMessages).padEnd(18)}│
-│  New OTPs:       ${String(newMessages).padEnd(18)}│
-│  Skipped:        ${String(skippedMessages).padEnd(18)}│
-└──────────────────────────────────────┘`;
+    if (!shouldLog('INFO')) return;
 
-    console.log(output);
+    // Concise single-line output to prevent terminal flooding
+    // Only log if something interesting happened (new messages) or if in DEBUG mode
+    // Otherwise, just log a "pulse" every now and then? 
+    // For now, let's just make it a clean single line.
+
+    const timestamp = new Date().toLocaleTimeString();
+
+    if (newMessages > 0) {
+        console.log(`✅ [${timestamp}] [API] Fetched: ${totalMessages} | 🆕 New: ${newMessages} | ⏭️ Skipped: ${skippedMessages}`);
+    } else {
+        // If no new messages, stick to a muted info log or skip if you want total silence
+        console.log(`ℹ️  [${timestamp}] [API] Fetched: ${totalMessages} | New: 0 | Skipped: ${skippedMessages}`);
+    }
+
     writeToFile(`[${getTimestamp()}] [API] Total: ${totalMessages}, New: ${newMessages}, Skipped: ${skippedMessages}`);
 }
 

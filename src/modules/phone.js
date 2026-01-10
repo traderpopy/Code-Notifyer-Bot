@@ -49,7 +49,12 @@ export function formatPhoneWithFlag(phoneNumber) {
 
         const countryCode = parsed.country;
         const flag = countryCodeToFlag(countryCode);
-        const formatted = '+' + cleanNumber;
+
+        // Use library formatting (e.g. +1 202-555-0100 or +44 20 7123 1234)
+        // Removing spaces for compact display if preferred, or keeping them for readability
+        // Let's stick to standard international format but maybe strip spaces if previously requested?
+        // User asked for parsed.formatInternational().
+        const formatted = parsed.formatInternational();
 
         return {
             formatted,
@@ -76,19 +81,31 @@ export function formatPhoneWithFlag(phoneNumber) {
 export function maskPhoneNumber(phone) {
     if (!phone) return '';
 
-    // Remove + for processing
+    // Remove non-digit chars (except +)
+    // Actually typically we mask the digits.
     const digits = phone.replace(/\D/g, '');
 
-    if (digits.length <= 8) {
-        // Short number - just return as is
-        return `+${digits}`;
+    // Define visibility
+    const visiblePrefix = 4;
+    const visibleSuffix = 3;
+
+    // Check for overlap or short numbers
+    if (digits.length <= (visiblePrefix + visibleSuffix)) {
+        // Very short number, show minimal
+        // e.g. 12345 -> 1...5
+        if (digits.length <= 2) return phone; // Too short to mask
+        return `+${digits.slice(0, 1)}...${digits.slice(-1)}`;
     }
 
-    // Show first 4 digits, mask middle, show last 3
-    const first = digits.slice(0, 4);
-    const last = digits.slice(-3);
-    const middleLength = digits.length - 7;
-    const masked = 'X'.repeat(Math.min(middleLength, 5));
+    const start = digits.slice(0, visiblePrefix);
+    const end = digits.slice(-visibleSuffix);
 
-    return `+${first}${masked}${last}`;
+    // Calculate middle length
+    const middleLength = digits.length - visiblePrefix - visibleSuffix;
+
+    // Ensure we don't mask too much or too little, but logic above guarantees middleLength >= 1
+    // Don't cap with Math.min, let it expand
+    const masked = 'X'.repeat(Math.max(middleLength, 1));
+
+    return `+${start}${masked}${end}`;
 }

@@ -23,20 +23,20 @@ const OTP_PATTERNS = [
     // "PIN: 123456"
     /\bPIN[:\s]+(\d{4,8})\b/i,
 
-    // "password: 123456"
-    /\bpassword[:\s]+(\d{4,8})\b/i,
+    // Explicit OTP indicators
+    /(?:\b(?:otp|one[-\s]?time|verification|code|pin)[:\s]*)(\d{4,8})/i,
 
-    // Telegram specific: "Telegram code 123456"
-    /Telegram\s+code\s+(\d{4,8})\b/i,
+    // Telegram specific: "Telegram code 123456" or "Telegram: 123456" or "Telegram 123456"
+    /Telegram(?:[:\s]+code)?[:\s]+(\d{4,8})\b/i,
 
-    // WhatsApp specific: "WhatsApp code 123456"
-    /WhatsApp[:\s]+(\d{4,8})\b/i,
+    // WhatsApp specific: "WhatsApp code 123456" or "WhatsApp: 123456" or "WhatsApp 123456"
+    /WhatsApp(?:[:\s]+code)?[:\s]+(\d{4,8})\b/i,
 
     // Generic 4-8 digit code at start of message
     /^(\d{4,8})\s+is\s+your/i,
 
-    // Fallback: Any standalone 4-8 digit number
-    /\b(\d{4,8})\b/
+    // Fallback: Standalone number not surrounded by alphanumeric chars (avoid phone numbers)
+    /(?<![A-Za-z0-9])(\d{4,8})(?![A-Za-z0-9])/
 ];
 
 /**
@@ -70,7 +70,8 @@ export function extractOtp(message) {
  * @returns {boolean} True if message likely contains OTP
  */
 export function hasOtpIndicators(message) {
-    if (!message) return false;
+    // Ensure strict type check
+    if (!message || typeof message !== 'string') return false;
 
     const indicators = [
         /\bcode\b/i,

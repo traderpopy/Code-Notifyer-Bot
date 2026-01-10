@@ -89,7 +89,8 @@ function parseMessages(response) {
 
     return response.aaData
         .filter(row => {
-            if (!Array.isArray(row) || row.length < 5) return false;
+            // Updated bounds check to ensure symbol and id exist
+            if (!Array.isArray(row) || row.length < 7) return false;
             if (typeof row[0] !== 'string' || !row[0].match(/^\d{4}-\d{2}-\d{2}/)) return false;
             if (typeof row[4] !== 'string') return false;
             return true;
@@ -118,11 +119,27 @@ export async function fetchMessages(retryCount = 0, isRetryAfterRefresh = false)
     const url = buildApiUrl(startDate, now);
 
     // Get current session cookie (from memory or env)
-    const sessionCookie = getSessionCookie();
+    let sessionCookie = getSessionCookie();
+
+    // If no session exists, try to login/refresh immediately
+    if (!sessionCookie) {
+        console.warn('⚠️ [API] No session found, attempting to obtain one...');
+        sessionCookie = await refreshSession();
+
+        if (!sessionCookie) {
+            console.error('❌ [API] Failed to obtain initial session');
+            return [];
+        }
+    }
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CONFIG.requestTimeout);
 
     try {
         const response = await fetch(url, {
             method: 'GET',
+            signal: controller.signal,
             headers: {
                 'Accept': 'application/json, text/javascript, */*; q=0.01',
                 'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -134,12 +151,29 @@ export async function fetchMessages(retryCount = 0, isRetryAfterRefresh = false)
             }
         });
 
+        clearTimeout(timeoutId);
+
+        // Immediate check for auth errors
+        if (response.status === 401 || response.status === 403) {
+            console.warn(`⚠️ [API] Auth error detected (Status ${response.status})`);
+
+            if (!isRetryAfterRefresh) {
+                console.log('🔄 [API] Refreshing session...');
+                const newCookie = await refreshSession();
+
+                if (newCookie) {
+                    return fetchMessages(0, true);
+                }
+            }
+            return [];
+        }
+
         // Get response text to check for session expiry
         const responseText = await response.text();
 
-        // Check if session expired
+        // Check if session expired (secondary check for HTML/soft fails)
         if (isSessionExpired(response, responseText)) {
-            console.warn('⚠️ [API] Session expired detected!');
+            console.warn('⚠️ [API] Session expired detected (Content check)!');
 
             // Only try to refresh once to avoid infinite loop
             if (!isRetryAfterRefresh) {
@@ -184,24 +218,19 @@ export async function fetchMessages(retryCount = 0, isRetryAfterRefresh = false)
         return parseMessages(data);
 
     } catch (error) {
-        console.error(`❌ API fetch error (attempt ${retryCount + 1}):`, error.message);
+        clearTimeout(timeoutId);
 
-        // Check if it's a network error that might be session-related
-        if (error.message.includes('401') || error.message.includes('403')) {
-            if (!isRetryAfterRefresh) {
-                console.warn('⚠️ [API] Auth error detected, refreshing session...');
-                const newCookie = await refreshSession();
-
-                if (newCookie) {
-                    return fetchMessages(0, true);
-                }
-            }
+        if (error.name === 'AbortError') {
+            console.error(`❌ API fetch timeout (${CONFIG.requestTimeout}ms)`);
+        } else {
+            console.error(`❌ API fetch error (attempt ${retryCount + 1}):`, error.message);
         }
 
         if (retryCount < CONFIG.maxRetries - 1) {
             console.log(`🔄 Retrying in ${CONFIG.retryDelay / 1000}s...`);
             await new Promise(resolve => setTimeout(resolve, CONFIG.retryDelay));
-            return fetchMessages(retryCount + 1, isRetryAfterRefresh);
+            // Reset isRetryAfterRefresh on generic retry to allow auth recovery later if needed
+            return fetchMessages(retryCount + 1, false);
         }
 
         console.error('❌ Max retries reached, returning empty array');
